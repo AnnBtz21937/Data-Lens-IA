@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.source import Source
 from app.schemas.source import SourceCreate
 from app.routes.auth import get_current_user
+from app.services.analysis import analisar_csv
 
 router = APIRouter(prefix="/sources", tags=["Sources"])
 
@@ -72,3 +73,46 @@ def upload_source(
     db.refresh(new_source)
 
     return new_source
+
+@router.post("/{source_id}/analyze")
+def analyze_source(
+    source_id: int,
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    source = db.query(Source).filter(
+        Source.id == source_id
+    ).first()
+
+    if not source:
+        raise HTTPException(
+            status_code=404,
+            detail="Fonte de dados não encontrada."
+        )
+
+    if not source.path:
+        raise HTTPException(
+            status_code=400,
+            detail="A fonte não possui um arquivo associado."
+        )
+
+    if not os.path.exists(source.path):
+        raise HTTPException(
+            status_code=404,
+            detail="Arquivo da fonte não encontrado."
+        )
+
+    try:
+        resultado = analisar_csv(source.path)
+
+        return {
+            "source_id": source.id,
+            "source_name": source.name,
+            "analysis": resultado
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao analisar o arquivo: {str(e)}"
+        )
