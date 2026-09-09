@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>InsightIA — Sistema Inteligente</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+</head>
+
+<body>
+
+    <!-- =========================
+         TELA DE LOGIN
+    ========================== -->
+
+    <div id="loginScreen" class="auth-screen">
+
+        <div class="auth-container">
+
+            <div class="auth-brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+
+                <h1>Insight<span>IA</span></h1>
+
+                <p>
+                    Seu espaço inteligente para analisar
+                    documentos e obter respostas com IA.
+                </p>
+
+                <div class="auth-features">
+                    <div>
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>Analise seus documentos</span>
+                    </div>
+
+                    <div>
+                        <i class="fa-solid fa-comments"></i>
+                        <span>Converse com sua base de dados</span>
+                    </div>
+
+                    <div>
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span>Obtenha insights inteligentes</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="auth-card">
+
+                <div class="auth-header">
+                    <h2>Bem-vindo de volta</h2>
+                    <p>Entre na sua conta para continuar.</p>
+                </div>
+
+                <form id="loginForm">
+
+                    <div class="input-group">
+                        <label for="email">E-mail</label>
+
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-envelope"></i>
+                            <input
+                                type="email"
+                                id="email"
+                                placeholder="seu@email.com"
+                                required
+                            >
+                        </div>
+                    </div>
+
+
+                    <div class="input-group">
+
+                        <label for="password">Senha</label>
+
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock"></i>
+
+                            <input
+                                type="password"
+                                id="password"
+                                placeholder="Digite sua senha"
+                                required
+                            >
+
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                id="togglePassword"
+                            >
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="login-options">
+
+                        <label class="remember">
+                            <input type="checkbox">
+                            <span>Lembrar de mim</span>
+                        </label>
+
+                        <a href="#">Esqueci minha senha</a>
+
+                    </div>
+
+
+                    <button type="submit" class="primary-btn login-btn">
+                        Entrar
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+
+                </form>
+
+
+                <div class="divider">
+                    <span>ou</span>
+                </div>
+
+
+                <button class="google-btn">
+                    <i class="fa-brands fa-google"></i>
+                    Continuar com Google
+                </button>
+
+
+                <p class="register-text">
+                    Ainda não possui uma conta?
+                    <button id="showRegister">Criar conta</button>
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         APLICAÇÃO
+    ========================== -->
+
+    <div id="app" class="app hidden">
+
+        <!-- SIDEBAR -->
+
+        <aside class="sidebar" id="sidebar">
+
+            <div class="sidebar-header">
+
+                <div class="logo">
+
+                    <div class="logo-icon">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+
+                    <span>
+                        Insight<span>IA</span>
+                    </span>
+
+                </div>
+
+                <button id="closeSidebar" class="mobile-close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+            </div>
+
+
+            <button class="new-project-btn" id="newProjectBtn">
+
+                <i class="fa-solid fa-plus"></i>
+
+                <span>Novo projeto</span>
+
+            </button>
+
+
+            <nav class="sidebar-nav">
+
+                <p class="nav-title">MENU</p>
+
+                <a href="#" class="nav-item active">
+
+                    <i class="fa-solid fa-house"></i>
+
+                    <span>Início</span>
+
+                </a>
+
+
+                <a href="#" class="nav-item">
+
+                    <i class="fa-regular fa-folder"></i>
+
+                    <span>Meus projetos</span>
+
+                </a>
+
+
+                <a href="#" class="nav-item">
+
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+
+                    <span>Histórico</span>
+
+                </a>
+
+
+                <p class="nav-title project-title">
+                    PROJETOS RECENTES
+                </p>
+
+                <div id="projectList">
+
+                    <div class="project-item active-project">
+
+                        <span class="project-dot"></span>
+
+                        <span>Projeto Inteligente</span>
+
+                    </div>
+
+                    <div class="project-item">
+
+                        <span class="project-dot"></span>
+
+                        <span>Pesquisa acadêmica</span>
+
+                    </div>
+
+                </div>
+
+            </nav>
+
+
+            <div class="sidebar-bottom">
+
+                <a href="#" class="nav-item">
+
+                    <i class="fa-solid fa-circle-question"></i>
+
+                    <span>Ajuda</span>
+
+                </a>
+
+                <a href="#" class="nav-item">
+
+                    <i class="fa-solid fa-gear"></i>
+
+                    <span>Configurações</span>
+
+                </a>
+
+
+                <div class="user-profile">
+
+                    <div class="avatar">
+                        MD
+                    </div>
+
+                    <div class="user-info">
+
+                        <strong>Maria Eduarda</strong>
+
+                        <span>Usuário</span>
+
+                    </div>
+
+                    <button>
+                        <i class="fa-solid fa-ellipsis"></i>
+                    </button>
+
+                </div>
+
+            </div>
+
+        </aside>
+
+
+        <!-- CONTEÚDO PRINCIPAL -->
+
+        <main class="main-content">
+
+            <!-- TOPBAR -->
+
+            <header class="topbar">
+
+                <button class="menu-mobile" id="openSidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="breadcrumb">
+
+                    <span>Início</span>
+
+                    <i class="fa-solid fa-chevron-right"></i>
+
+                    <strong>Projeto Inteligente</strong>
+
+                </div>
+
+
+                <div class="topbar-actions">
+
+                    <button class="icon-button">
+
+                        <i class="fa-regular fa-bell"></i>
+
+                    </button>
+
+                    <button class="avatar small-avatar">
+                        MD
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            <!-- ÁREA DO PROJETO -->
+
+            <section class="workspace">
+
+                <div class="workspace-header">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            SEU ESPAÇO DE ESTUDO
+                        </span>
+
+                        <h1>
+                            Projeto Inteligente
+                        </h1>
+
+                        <p>
+                            Adicione documentos e converse com a IA
+                            sobre o conteúdo das suas fontes.
+                        </p>
+
+                    </div>
+
+
+                    <button class="secondary-btn" id="addSourceBtn">
+
+                        <i class="fa-solid fa-upload"></i>
+
+                        Adicionar fonte
+
+                    </button>
+
+                </div>
+
+
+                <!-- CARDS DE ESTATÍSTICAS -->
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+
+                        <div class="stat-icon purple">
+                            <i class="fa-solid fa-file-lines"></i>
+                        </div>
+
+                        <div>
+
+                            <span>Fontes adicionadas</span>
+
+                            <strong id="sourceCount">3</strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="stat-card">
+
+                        <div class="stat-icon blue">
+                            <i class="fa-solid fa-comments"></i>
+                        </div>
+
+                        <div>
+
+                            <span>Perguntas realizadas</span>
+
+                            <strong id="questionCount">12</strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="stat-card">
+
+                        <div class="stat-icon green">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+
+                        <div>
+
+                            <span>Conteúdo analisado</span>
+
+                            <strong>85%</strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- CONTEÚDO PRINCIPAL -->
+
+                <div class="content-grid">
+
+
+                    <!-- FONTES -->
+
+                    <section class="sources-panel">
+
+                        <div class="section-header">
+
+                            <div>
+
+                                <h2>Suas fontes</h2>
+
+                                <p>
+                                    Documentos utilizados pela IA
+                                    para responder suas perguntas.
+                                </p>
+
+                            </div>
+
+                            <button
+                                class="text-button"
+                                id="addSourceBtn2"
+                            >
+                                + Adicionar
+                            </button>
+
+                        </div>
+
+
+                        <div id="sourcesList" class="sources-list">
+
+
+                            <div class="source-card">
+
+                                <div class="source-icon pdf">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                </div>
+
+                                <div class="source-info">
+
+                                    <strong>
+                                        Introdução à Inteligência Artificial.pdf
+                                    </strong>
+
+                                    <span>
+                                        PDF • 2.4 MB
+                                    </span>
+
+                                </div>
+
+                                <button class="source-menu">
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                </button>
+
+                            </div>
+
+
+                            <div class="source-card">
+
+                                <div class="source-icon excel">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                </div>
+
+                                <div class="source-info">
+
+                                    <strong>
+                                        Dados_Pesquisa.xlsx
+                                    </strong>
+
+                                    <span>
+                                        Excel • 845 KB
+                                    </span>
+
+                                </div>
+
+                                <button class="source-menu">
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                </button>
+
+                            </div>
+
+
+                            <div class="source-card">
+
+                                <div class="source-icon doc">
+                                    <i class="fa-solid fa-file-word"></i>
+                                </div>
+
+                                <div class="source-info">
+
+                                    <strong>
+                                        Referencial_Teorico.docx
+                                    </strong>
+
+                                    <span>
+                                        Word • 1.2 MB
+                                    </span>
+
+                                </div>
+
+                                <button class="source-menu">
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                </button>
+
+                            </div>
+
+
+                            <div class="empty-source" id="emptySource">
+
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+
+                                <strong>
+                                    Adicione uma nova fonte
+                                </strong>
+
+                                <span>
+                                    PDF, DOCX, XLSX, TXT e outros formatos
+                                </span>
+
+                                <button
+                                    class="outline-btn"
+                                    id="emptyUploadBtn"
+                                >
+                                    Escolher arquivo
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+
+                    <!-- CHAT -->
+
+                    <section class="chat-panel">
+
+                        <div class="chat-header">
+
+                            <div class="ai-title">
+
+                                <div class="ai-icon">
+                                    <i class="fa-solid fa-sparkles"></i>
+                                </div>
+
+                                <div>
+
+                                    <strong>
+                                        Assistente IA
+                                    </strong>
+
+                                    <span>
+                                        Baseado nas suas fontes
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+
+                            <span class="online-status">
+                                <span></span>
+                                Online
+                            </span>
+
+                        </div>
+
+
+                        <!-- MENSAGENS -->
+
+                        <div class="chat-messages" id="chatMessages">
+
+
+                            <div class="message ai-message">
+
+                                <div class="message-avatar">
+                                    <i class="fa-solid fa-sparkles"></i>
+                                </div>
+
+                                <div class="message-content">
+
+                                    <div class="message-author">
+                                        InsightIA
+                                    </div>
+
+                                    <p>
+                                        Olá! 👋 Sou o assistente inteligente
+                                        deste projeto.
+                                    </p>
+
+                                    <p>
+                                        Analisei as fontes adicionadas e estou
+                                        pronto para responder perguntas
+                                        baseadas no conteúdo dos seus documentos.
+                                    </p>
+
+                                    <span class="message-time">
+                                        Agora
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="suggestions">
+
+                                <span>
+                                    Experimente perguntar:
+                                </span>
+
+                                <button class="suggestion-btn">
+                                    Qual é o principal assunto dos documentos?
+                                </button>
+
+                                <button class="suggestion-btn">
+                                    Faça um resumo das fontes.
+                                </button>
+
+                                <button class="suggestion-btn">
+                                    Quais são os conceitos mais importantes?
+                                </button>
+
+                            </div>
+
+
+                        </div>
+
+
+                        <!-- INPUT -->
+
+                        <div class="chat-input-area">
+
+                            <div class="chat-input-wrapper">
+
+                                <textarea
+                                    id="chatInput"
+                                    placeholder="Pergunte algo sobre suas fontes..."
+                                    rows="1"
+                                ></textarea>
+
+                                <div class="input-actions">
+
+                                    <button
+                                        class="attach-button"
+                                        id="chatAttach"
+                                    >
+                                        <i class="fa-solid fa-paperclip"></i>
+                                    </button>
+
+                                    <button
+                                        class="send-button"
+                                        id="sendMessage"
+                                    >
+                                        <i class="fa-solid fa-arrow-up"></i>
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                            <small>
+                                A IA responde com base no conteúdo
+                                das fontes adicionadas.
+                            </small>
+
+                        </div>
+
+                    </section>
+
+                </div>
+
+
+                <!-- EXPLICAÇÃO PARA PROFESSOR -->
+
+                <section class="how-it-works">
+
+                    <div class="how-icon">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Como funciona o sistema?
+                        </h3>
+
+                        <p>
+                            O usuário adiciona documentos ao projeto.
+                            Esses arquivos serão processados pelo backend
+                            e utilizados como base de conhecimento pela
+                            Inteligência Artificial. A partir disso,
+                            o usuário pode realizar perguntas e receber
+                            respostas contextualizadas de acordo com
+                            o conteúdo dos arquivos.
+                        </p>
+
+                    </div>
+
+                </section>
+
+            </section>
+
+        </main>
+
+    </div>
+
+
+    <!-- =========================
+         MODAL DE UPLOAD
+    ========================== -->
+
+    <div class="modal-overlay hidden" id="uploadModal">
+
+        <div class="modal">
+
+            <button class="modal-close" id="closeModal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="modal-icon">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+
+            <h2>Adicionar fonte</h2>
+
+            <p>
+                Escolha um arquivo para adicionar ao seu projeto.
+            </p>
+
+
+            <label class="drop-zone" id="dropZone">
+
+                <input
+                    type="file"
+                    id="fileInput"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                    multiple
+                >
+
+                <i class="fa-solid fa-file-arrow-up"></i>
+
+                <strong>
+                    Arraste seu arquivo aqui
+                </strong>
+
+                <span>
+                    ou clique para selecionar
+                </span>
+
+                <small>
+                    PDF, DOCX, XLSX, CSV ou TXT
+                </small>
+
+            </label>
+
+
+            <div id="selectedFiles"></div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    class="cancel-btn"
+                    id="cancelUpload"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    class="primary-btn"
+                    id="confirmUpload"
+                >
+                    Adicionar arquivo
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+    <script src="script.js"></script>
+
+</body>
+</html>
