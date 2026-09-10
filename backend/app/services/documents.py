@@ -158,11 +158,13 @@ def _table_answer(question: str, analysis: dict) -> str:
         if isinstance(values, list):
             highlights.extend(str(value) for value in values[:3])
 
-    if highlights:
+    asks_for_summary = _is_summary_question(lower_question)
+    if highlights or asks_for_summary:
         return "\n\n".join([
             "Resumo da análise",
             f"O arquivo contém {total_records} registros distribuídos em {total_columns} colunas.",
             "Principais achados:\n- " + "\n- ".join(highlights[:4])
+            if highlights else "Não foram calculados achados categóricos para este arquivo."
         ])
 
     return "\n\n".join([
@@ -173,18 +175,19 @@ def _table_answer(question: str, analysis: dict) -> str:
 
 
 def _text_answer(question: str, text: str) -> str:
+    normalized_question = _normalize(question)
     keywords = {
-        word for word in _normalize(question).split()
+        word for word in normalized_question.split()
         if len(word) >= 4 and word not in {
-            "qual", "quais", "como", "onde", "quando", "sobre",
+            "qual", "quais", "como", "onde", "quando", "sobre", "resumindo",
+            "resuma", "resumo", "assunto", "tema", "principal", "isso",
             "esse", "esta", "para", "arquivo", "documento"
         }
     }
-    paragraphs = [
-        " ".join(paragraph.split())
-        for paragraph in re.split(r"\n\s*\n|(?<=[.!?])\s+", text)
-        if paragraph.strip()
-    ]
+    paragraphs = _text_units(text)
+
+    if _is_summary_question(normalized_question):
+        return _text_summary(text, paragraphs)
 
     ranked = sorted(
         (
@@ -195,13 +198,6 @@ def _text_answer(question: str, text: str) -> str:
         reverse=True
     )
     matches = [paragraph for score, _, paragraph in ranked if score > 0][:3]
-
-    asks_for_summary = any(
-        term in _normalize(question)
-        for term in ("assunto", "tema", "resumo", "resuma", "principal")
-    )
-    if not matches and asks_for_summary:
-        matches = paragraphs[:3]
 
     if matches:
         return "\n\n".join([
@@ -227,6 +223,57 @@ def _normalize(value: str) -> str:
         if not unicodedata.combining(character)
     )
     return re.sub(r"[^\w\s]", " ", without_accents.lower())
+
+
+def _is_summary_question(normalized_question: str) -> bool:
+    return any(
+        term in normalized_question
+        for term in (
+            "resum", "assunto", "tema", "sobre o que", "do que trata",
+            "principais pontos", "em poucas palavras"
+        )
+    )
+
+
+def _text_units(text: str) -> list[str]:
+    normalized = " ".join(text.split())
+    numbered_units = re.split(r"(?=\b\d+\.\s+)", normalized)
+    if len(numbered_units) > 1:
+        units = numbered_units
+    else:
+        units = re.split(r"(?<=[.!?])\s+", normalized)
+
+    return [unit.strip(" -") for unit in units if unit.strip()]
+
+
+def _text_summary(text: str, units: list[str]) -> str:
+    normalized_text = _normalize(text)
+    topic = "o conteúdo apresentado no documento"
+    topic_signals = [
+        (("treino", "exercicio", "serie", "reps", "aquecimento"), "um plano de treino e exercícios físicos"),
+        (("aluno", "escola", "professor", "educacao"), "informações educacionais"),
+        (("venda", "produto", "cliente", "faturamento"), "dados comerciais e de clientes"),
+        (("receita", "ingrediente", "preparo"), "uma receita ou instruções de preparo")
+    ]
+    for signals, description in topic_signals:
+        if sum(signal in normalized_text for signal in signals) >= 2:
+            topic = description
+            break
+
+    points = []
+    for unit in units:
+        compact = unit[:220].strip()
+        if compact and compact not in points:
+            points.append(compact)
+        if len(points) == 4:
+            break
+
+    return "\n\n".join([
+        "Resumo do documento",
+        f"O documento trata de {topic}.",
+        "Pontos identificados no conteúdo:\n- " + "\n- ".join(points),
+        "Resumo construído exclusivamente a partir do texto extraído do arquivo."
+    ])
 
 
 def answer_question(file_path: str, source_name: str, question: str) -> dict:
