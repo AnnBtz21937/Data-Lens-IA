@@ -82,7 +82,7 @@
                             <span>Lembrar de mim</span>
                         </label>
 
-                        <a href="#">Esqueci minha senha</a>
+                        <a href="#" id="forgotPassword">Esqueci minha senha</a>
 
                     </div>
 
@@ -137,7 +137,7 @@
                 </div>
 
 
-                <button class="google-btn">
+                <button class="google-btn" id="googleLogin">
                     <i class="fa-brands fa-google"></i>
                     Continuar com Google
                 </button>
@@ -199,7 +199,7 @@
 
                 <p class="nav-title">MENU</p>
 
-                <a href="#" class="nav-item active">
+                <a href="#" class="nav-item active" id="homeNav">
 
                     <i class="fa-solid fa-house"></i>
 
@@ -208,7 +208,7 @@
                 </a>
 
 
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" id="projectsNav">
 
                     <i class="fa-regular fa-folder"></i>
 
@@ -217,7 +217,7 @@
                 </a>
 
 
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" id="historyNav">
 
                     <i class="fa-solid fa-clock-rotate-left"></i>
 
@@ -237,7 +237,7 @@
 
             <div class="sidebar-bottom">
 
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" id="helpNav">
 
                     <i class="fa-solid fa-circle-question"></i>
 
@@ -245,7 +245,7 @@
 
                 </a>
 
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" id="settingsNav">
 
                     <i class="fa-solid fa-gear"></i>
 
@@ -268,7 +268,7 @@
 
                     </div>
 
-                    <button>
+                    <button id="userMenu" title="Sair">
                         <i class="fa-solid fa-ellipsis"></i>
                     </button>
 
@@ -304,7 +304,7 @@
 
                 <div class="topbar-actions">
 
-                    <button class="icon-button">
+                    <button class="icon-button" id="notificationsButton" title="Notificações">
 
                         <i class="fa-regular fa-bell"></i>
 
@@ -614,6 +614,15 @@
             </p>
 
 
+            <div class="input-group source-mode-group">
+                <label for="sourceMode">Tipo de fonte</label>
+                <select id="sourceMode">
+                    <option value="file">Arquivo</option>
+                    <option value="mysql">MySQL</option>
+                    <option value="mongodb">MongoDB</option>
+                </select>
+            </div>
+
             <label class="drop-zone" id="dropZone">
 
                 <input
@@ -639,6 +648,21 @@
 
             </label>
 
+            <div id="databaseFields" class="database-fields hidden">
+                <div class="input-group">
+                    <label for="databaseName">Nome da fonte</label>
+                    <input id="databaseName" type="text" placeholder="Ex.: Clientes MySQL">
+                </div>
+                <div class="input-group">
+                    <label for="connectionUrl">URL de conexão</label>
+                    <input id="connectionUrl" type="text" placeholder="mysql+pymysql://... ou mongodb://...">
+                </div>
+                <div class="input-group">
+                    <label for="databaseQuery">Consulta</label>
+                    <input id="databaseQuery" type="text" placeholder="SQL: SELECT ... | Mongo: colecao?{ }">
+                </div>
+            </div>
+
 
             <div id="selectedFiles"></div>
 
@@ -663,6 +687,23 @@
 
         </div>
 
+    </div>
+
+    <div class="modal-overlay hidden" id="projectModal">
+        <div class="modal">
+            <button class="modal-close" id="closeProjectModal"><i class="fa-solid fa-xmark"></i></button>
+            <div class="modal-icon"><i class="fa-solid fa-folder-plus"></i></div>
+            <h2>Novo projeto</h2>
+            <p>Escolha um nome para organizar suas fontes.</p>
+            <div class="input-group">
+                <label for="projectNameInput">Nome do projeto</label>
+                <input id="projectNameInput" type="text" placeholder="Ex.: Pesquisa acadêmica">
+            </div>
+            <div class="modal-actions">
+                <button class="cancel-btn" id="cancelProject">Cancelar</button>
+                <button class="primary-btn" id="confirmProject">Criar projeto</button>
+            </div>
+        </div>
     </div>
 
 

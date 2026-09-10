@@ -48,8 +48,12 @@ backend/app/
 - `TXT`: leitura com tentativas de UTF-8, CP1252 e Latin-1.
 - `CSV`: separador e encoding detectados pelo pandas.
 - `XLSX` e `XLS`: leitura com pandas, OpenPyXL e xlrd.
+- `MySQL`: consulta SQL informada pelo usuário usando SQLAlchemy/PyMySQL.
+- `MongoDB`: consulta simples por coleção e filtro JSON usando PyMongo.
 
 Arquivos `.doc` antigos não são processados diretamente. Salve-os como `.docx` antes do upload.
+
+Fontes MySQL e MongoDB não enviam arquivos: o sistema executa uma consulta controlada no momento do cadastro, guarda o resultado consultado como fonte tabular e permite fazer perguntas sobre esse resultado.
 
 ## Como as respostas são produzidas
 
@@ -68,7 +72,7 @@ Este mecanismo é uma análise local determinística. O projeto ainda não chama
 Use Python 3.12 ou compatível:
 
 ```powershell
-python -m pip install fastapi uvicorn sqlalchemy pymysql python-dotenv "pwdlib[argon2]" pyjwt python-multipart pandas openpyxl xlrd pypdf python-docx
+python -m pip install fastapi uvicorn sqlalchemy pymysql python-dotenv "pwdlib[argon2]" pyjwt python-multipart pandas openpyxl xlrd pypdf python-docx pymongo
 ```
 
 ## Banco de dados

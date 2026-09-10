@@ -49,12 +49,20 @@ const openSidebar = document.getElementById("openSidebar");
 const closeSidebar = document.getElementById("closeSidebar");
 const sidebar = document.getElementById("sidebar");
 const newProjectBtn = document.getElementById("newProjectBtn");
+const projectModal = document.getElementById("projectModal");
+const projectNameInput = document.getElementById("projectNameInput");
+const sourceMode = document.getElementById("sourceMode");
+const databaseFields = document.getElementById("databaseFields");
+const databaseName = document.getElementById("databaseName");
+const connectionUrl = document.getElementById("connectionUrl");
+const databaseQuery = document.getElementById("databaseQuery");
 
 const API_URL = window.BDIA_API_URL || "http://localhost:8000";
 let accessToken = localStorage.getItem("datalens_token");
 let currentProject = null;
 let latestSource = null;
 let currentSources = [];
+let projects = [];
 
 async function apiRequest(path, options = {}) {
     const headers = new Headers(options.headers || {});
@@ -78,7 +86,7 @@ async function apiRequest(path, options = {}) {
 }
 
 async function loadOrCreateProject() {
-    const projects = await apiRequest("/projects/");
+    projects = await apiRequest("/projects/");
 
     if (projects.length > 0) {
         currentProject = projects[0];
@@ -94,9 +102,14 @@ async function loadOrCreateProject() {
     }
 
     clearSources();
-    updateProjectInterface(currentProject);
+    await loadProjects();
     await loadCurrentUser();
     await loadSources();
+}
+
+async function loadProjects() {
+    projects = await apiRequest("/projects/");
+    updateProjectInterface(currentProject);
 }
 
 async function loadCurrentUser() {
@@ -132,12 +145,55 @@ function updateProjectInterface(project) {
     document.querySelector(".breadcrumb strong").textContent = project.name;
 
     const projectList = document.getElementById("projectList");
-    projectList.innerHTML = `
-        <div class="project-item active-project">
+    projectList.innerHTML = projects.map(item => `
+        <div class="project-item ${item.id === project.id ? "active-project" : ""}" data-project-id="${item.id}">
             <span class="project-dot"></span>
-            <span>${escapeHTML(project.name)}</span>
+            <span>${escapeHTML(item.name)}</span>
+            <button class="project-delete" data-project-id="${item.id}" title="Excluir projeto">
+                <i class="fa-solid fa-trash"></i>
+            </button>
         </div>
-    `;
+    `).join("");
+
+    projectList.querySelectorAll(".project-item").forEach(item => {
+        item.addEventListener("click", event => {
+            if (event.target.closest(".project-delete")) return;
+            selectProject(Number(item.dataset.projectId));
+        });
+    });
+    projectList.querySelectorAll(".project-delete").forEach(button => {
+        button.addEventListener("click", event => {
+            event.stopPropagation();
+            deleteProject(Number(button.dataset.projectId));
+        });
+    });
+}
+
+async function selectProject(projectId) {
+    currentProject = projects.find(project => project.id === projectId);
+    if (!currentProject) return;
+    clearSources();
+    updateProjectInterface(currentProject);
+    await loadSources();
+}
+
+async function deleteProject(projectId) {
+    const project = projects.find(item => item.id === projectId);
+    if (!project || !confirm(`Excluir o projeto "${project.name}"?`)) return;
+
+    try {
+        await apiRequest(`/projects/${projectId}`, { method: "DELETE" });
+        projects = projects.filter(item => item.id !== projectId);
+        if (currentProject?.id === projectId) {
+            currentProject = projects[0] || null;
+            clearSources();
+            if (currentProject) await loadSources();
+        }
+        if (currentProject) updateProjectInterface(currentProject);
+        else document.getElementById("projectList").innerHTML = "";
+    } catch (error) {
+        alert(error.message);
+    }
 }
 
 
@@ -227,6 +283,15 @@ document
         registerExtras.forEach(element => element.classList.remove("hidden"));
     });
 
+document.getElementById("forgotPassword").addEventListener("click", function(event) {
+    event.preventDefault();
+    alert("A recuperação de senha ainda precisa de um serviço de e-mail configurado.");
+});
+
+document.getElementById("googleLogin").addEventListener("click", function() {
+    alert("O login Google ainda não está configurado nesta API.");
+});
+
 
 /* =====================================
    MOSTRAR / ESCONDER SENHA
@@ -270,6 +335,12 @@ function closeUploadModal() {
     selectedFiles.innerHTML = "";
 
     fileInput.value = "";
+    sourceMode.value = "file";
+    dropZone.classList.remove("hidden");
+    databaseFields.classList.add("hidden");
+    databaseName.value = "";
+    connectionUrl.value = "";
+    databaseQuery.value = "";
 
 }
 
@@ -298,6 +369,14 @@ cancelUpload.addEventListener(
     "click",
     closeUploadModal
 );
+
+sourceMode.addEventListener("change", function() {
+    const isDatabase = sourceMode.value !== "file";
+    dropZone.classList.toggle("hidden", isDatabase);
+    databaseFields.classList.toggle("hidden", !isDatabase);
+    selectedFiles.innerHTML = "";
+    fileInput.value = "";
+});
 
 
 /* FECHAR CLICANDO FORA */
@@ -419,7 +498,7 @@ document
             const files =
                 Array.from(fileInput.files);
 
-            if (files.length === 0) {
+            if (sourceMode.value === "file" && files.length === 0) {
 
                 alert(
                     "Selecione pelo menos um arquivo."
@@ -436,18 +515,37 @@ document
             }
 
             try {
-                for (const file of files) {
-                    const formData = new FormData();
-                    formData.append("file", file);
-
+                if (sourceMode.value !== "file") {
                     const source = await apiRequest(
-                        `/sources/${currentProject.id}/upload`,
-                        { method: "POST", body: formData }
+                        `/sources/${currentProject.id}/database`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                name: databaseName.value.trim(),
+                                type: sourceMode.value,
+                                connection_url: connectionUrl.value.trim(),
+                                query: databaseQuery.value.trim()
+                            })
+                        }
                     );
-
-                    addSourceToInterface(file, source);
+                    addSourceToInterface({ name: source.name, size: 0 }, source);
                     currentSources.push(source);
                     latestSource = source;
+                } else {
+                    for (const file of files) {
+                        const formData = new FormData();
+                        formData.append("file", file);
+
+                        const source = await apiRequest(
+                            `/sources/${currentProject.id}/upload`,
+                            { method: "POST", body: formData }
+                        );
+
+                        addSourceToInterface(file, source);
+                        currentSources.push(source);
+                        latestSource = source;
+                    }
                 }
 
                 closeUploadModal();
@@ -461,11 +559,7 @@ document
 
 function addSourceToInterface(file, sourceData = null) {
 
-    const extension =
-        file.name
-            .split(".")
-            .pop()
-            .toLowerCase();
+    const extension = sourceData?.type || file.name.split(".").pop().toLowerCase();
 
 
     let icon =
@@ -545,6 +639,10 @@ function addSourceToInterface(file, sourceData = null) {
 
     `;
 
+    sourceCard.querySelector(".source-menu").addEventListener("click", () => {
+        deleteSource(sourceData?.id, sourceCard);
+    });
+
 
     /*
         Inserimos antes da área
@@ -562,6 +660,20 @@ function addSourceToInterface(file, sourceData = null) {
 
     updateSourceCount();
 
+}
+
+async function deleteSource(sourceId, sourceCard) {
+    if (!sourceId || !confirm("Excluir esta fonte?")) return;
+
+    try {
+        await apiRequest(`/sources/${sourceId}`, { method: "DELETE" });
+        sourceCard.remove();
+        currentSources = currentSources.filter(source => source.id !== sourceId);
+        latestSource = currentSources[currentSources.length - 1] || null;
+        updateSourceCount();
+    } catch (error) {
+        alert(error.message);
+    }
 }
 
 
@@ -1018,36 +1130,44 @@ closeSidebar.addEventListener(
    NOVO PROJETO
 ===================================== */
 
-newProjectBtn.addEventListener(
-    "click",
-    async function() {
+newProjectBtn.addEventListener("click", function() {
+    projectNameInput.value = "";
+    projectModal.classList.remove("hidden");
+    projectNameInput.focus();
+});
 
-        const projectName =
-            prompt(
-                "Digite o nome do novo projeto:"
-            );
+function closeProjectModal() {
+    projectModal.classList.add("hidden");
+}
 
-
-        if (!projectName)
-            return;
-
-
-        try {
-            currentProject = await apiRequest("/projects/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: projectName })
-            });
-
-            latestSource = null;
-            clearSources();
-            updateProjectInterface(currentProject);
-        } catch (error) {
-            alert(error.message);
-        }
-
+document.getElementById("closeProjectModal").addEventListener("click", closeProjectModal);
+document.getElementById("cancelProject").addEventListener("click", closeProjectModal);
+document.getElementById("confirmProject").addEventListener("click", async function() {
+    const projectName = projectNameInput.value.trim();
+    if (!projectName) {
+        alert("Digite um nome para o projeto.");
+        return;
     }
-);
+
+    try {
+        currentProject = await apiRequest("/projects/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: projectName })
+        });
+        projects.push(currentProject);
+        latestSource = null;
+        clearSources();
+        updateProjectInterface(currentProject);
+        closeProjectModal();
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+projectModal.addEventListener("click", function(event) {
+    if (event.target === projectModal) closeProjectModal();
+});
 
 
 /* =====================================
@@ -1071,6 +1191,50 @@ document
         );
 
     });
+
+function activateNavigation(activeItem) {
+    document.querySelectorAll(".sidebar-nav .nav-item").forEach(item => {
+        item.classList.toggle("active", item === activeItem);
+    });
+}
+
+document.getElementById("homeNav").addEventListener("click", function(event) {
+    event.preventDefault();
+    activateNavigation(this);
+    document.querySelector(".workspace").scrollIntoView({ behavior: "smooth" });
+});
+
+document.getElementById("projectsNav").addEventListener("click", function(event) {
+    event.preventDefault();
+    activateNavigation(this);
+    document.getElementById("projectList").scrollIntoView({ behavior: "smooth" });
+});
+
+document.getElementById("historyNav").addEventListener("click", function(event) {
+    event.preventDefault();
+    activateNavigation(this);
+    chatMessages.scrollIntoView({ behavior: "smooth" });
+});
+
+document.getElementById("helpNav").addEventListener("click", function(event) {
+    event.preventDefault();
+    document.querySelector(".how-it-works").scrollIntoView({ behavior: "smooth" });
+});
+
+document.getElementById("settingsNav").addEventListener("click", function(event) {
+    event.preventDefault();
+    alert("As configurações de conexão são definidas pelo administrador do backend.");
+});
+
+document.getElementById("notificationsButton").addEventListener("click", function() {
+    alert("Não há novas notificações.");
+});
+
+document.getElementById("userMenu").addEventListener("click", function() {
+    if (!confirm("Sair da conta?")) return;
+    localStorage.removeItem("datalens_token");
+    window.location.reload();
+});
 
 
 /* =====================================

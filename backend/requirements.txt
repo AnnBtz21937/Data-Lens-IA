@@ -11,3 +11,4 @@ openpyxl
 xlrd
 pypdf
 python-docx
+pymongo

@@ -1,8 +1,9 @@
 import re
 import unicodedata
+import json
 from pathlib import Path
 
-from app.services.analysis import analisar_csv
+from app.services.analysis import analisar_colunas, analisar_csv
 
 
 TABLE_EXTENSIONS = {".csv", ".xls", ".xlsx"}
@@ -48,6 +49,24 @@ def _read_docx(file_path: str) -> str:
 
 
 def read_document(file_path: str) -> dict:
+    if file_path.startswith("database:"):
+        import pandas as pd
+
+        config = json.loads(file_path.removeprefix("database:"))
+        rows = config.get("rows", [])
+        frame = pd.DataFrame(rows)
+        return {
+            "kind": "table",
+            "analysis": {
+                "total_registros": int(len(frame)),
+                "total_colunas": int(len(frame.columns)),
+                "colunas": [str(column) for column in frame.columns],
+                "analise_colunas": analisar_colunas(frame),
+                "insights": {}
+            },
+            "text": ""
+        }
+
     extension = Path(file_path).suffix.lower()
 
     if extension not in SUPPORTED_EXTENSIONS:

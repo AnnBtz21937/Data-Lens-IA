@@ -1022,6 +1022,39 @@ a {
     overflow: hidden;
 }
 
+.project-delete {
+    margin-left: auto;
+    padding: 5px;
+    background: transparent;
+    color: var(--text-secondary);
+    opacity: 0;
+}
+
+.project-item:hover .project-delete,
+.project-delete:focus {
+    opacity: 1;
+}
+
+.project-delete:hover {
+    color: #d94b62;
+}
+
+.source-mode-group select,
+.database-fields input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 12px;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.database-fields {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+}
+
 .source-info strong {
     display: block;
 

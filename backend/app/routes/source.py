@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 import os
 import shutil
+import json
+import urllib.parse
 
 from app.database import get_db
 from app.models.source import Source
@@ -14,6 +16,39 @@ from app.services.documents import (
 )
 
 router = APIRouter(prefix="/sources", tags=["Sources"])
+
+
+def _database_rows(source_type: str, connection_url: str, query: str):
+    if source_type == "mysql":
+        from sqlalchemy import create_engine, text
+
+        engine = create_engine(connection_url, pool_pre_ping=True)
+        with engine.connect() as connection:
+            result = connection.execute(text(query))
+            return [dict(row._mapping) for row in result]
+
+    if source_type == "mongodb":
+        from pymongo import MongoClient
+
+        parsed = urllib.parse.urlparse(connection_url)
+        database_name = parsed.path.strip("/")
+        if not database_name:
+            raise ValueError("A URL do MongoDB precisa informar o banco na URL.")
+
+        client = MongoClient(connection_url, serverSelectionTimeoutMS=5000)
+        try:
+            database = client[database_name]
+            collection_name, _, filter_json = query.partition("?")
+            collection = database[collection_name.strip()]
+            filters = json.loads(filter_json) if filter_json else {}
+            return [
+                {key: str(value) if key == "_id" else value for key, value in row.items()}
+                for row in collection.find(filters).limit(1000)
+            ]
+        finally:
+            client.close()
+
+    raise ValueError("Banco de dados não suportado.")
 
 
 @router.get("/project/{project_id}")
@@ -87,6 +122,70 @@ def upload_source(
     db.refresh(new_source)
 
     return new_source
+
+
+@router.post("/{project_id}/database")
+def create_database_source(
+    project_id: int,
+    source: dict,
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    source_type = str(source.get("type", "")).lower()
+    connection_url = str(source.get("connection_url", "")).strip()
+    query = str(source.get("query", "")).strip()
+    name = str(source.get("name", "Fonte de banco")).strip()
+
+    if source_type not in {"mysql", "mongodb"}:
+        raise HTTPException(status_code=400, detail="Escolha MySQL ou MongoDB.")
+    if not connection_url or not query:
+        raise HTTPException(status_code=400, detail="Informe a conexão e a consulta.")
+
+    try:
+        rows = _database_rows(source_type, connection_url, query)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail=f"Não foi possível consultar o banco: {error}") from error
+
+    if not rows:
+        raise HTTPException(status_code=400, detail="A consulta não retornou registros.")
+
+    stored_config = json.dumps({
+        "connection_url": connection_url,
+        "query": query,
+        "rows": rows
+    })
+    new_source = Source(
+        name=name,
+        type=source_type,
+        path=f"database:{stored_config}",
+        project_id=project_id
+    )
+    db.add(new_source)
+    db.commit()
+    db.refresh(new_source)
+    return {
+        "id": new_source.id,
+        "name": new_source.name,
+        "type": new_source.type,
+        "project_id": new_source.project_id,
+        "rows": rows
+    }
+
+
+@router.delete("/{source_id}")
+def delete_source(
+    source_id: int,
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    source = db.query(Source).filter(Source.id == source_id).first()
+
+    if not source:
+        raise HTTPException(status_code=404, detail="Fonte não encontrada.")
+
+    db.delete(source)
+    db.commit()
+    return {"message": "Fonte excluída."}
 
 
 @router.post("/{source_id}/ask")
