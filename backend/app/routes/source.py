@@ -7,6 +7,7 @@ import urllib.parse
 
 from app.database import get_db
 from app.models.source import Source
+from app.models.question import Question
 from app.schemas.source import SourceCreate
 from app.routes.auth import get_current_user
 from app.services.documents import (
@@ -183,6 +184,9 @@ def delete_source(
     if not source:
         raise HTTPException(status_code=404, detail="Fonte não encontrada.")
 
+    db.query(Question).filter(Question.source_id == source_id).delete(
+        synchronize_session=False
+    )
     db.delete(source)
     db.commit()
     return {"message": "Fonte excluída."}
@@ -208,7 +212,17 @@ def ask_source(
         raise HTTPException(status_code=404, detail="Arquivo da fonte não encontrado.")
 
     try:
-        return answer_question(source.path, source.name, question_text)
+        result = answer_question(source.path, source.name, question_text)
+        history_item = Question(
+            question=question_text,
+            answer=result["answer"],
+            user_id=user_id,
+            project_id=source.project_id,
+            source_id=source.id
+        )
+        db.add(history_item)
+        db.commit()
+        return result
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:

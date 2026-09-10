@@ -24,6 +24,8 @@ O frontend não acessa o banco diretamente. Ele conversa com a API em `http://lo
 9. O backend lê novamente o arquivo, calcula a resposta com base no conteúdo e devolve a resposta e os dados da análise.
 10. O frontend exibe a resposta, incrementa as perguntas respondidas e marca o conteúdo como analisado.
 
+Cada pergunta respondida é salva na tabela `questions` com usuário, projeto, fonte, pergunta, resposta e data. Ao abrir ou trocar de projeto, o frontend chama `GET /projects/{project_id}/history`, restaura a conversa e atualiza o contador de perguntas a partir do banco.
+
 ## Estrutura do backend
 
 ```text
@@ -31,6 +33,7 @@ backend/app/
 	main.py                 inicialização da API, CORS e rotas
 	database.py             conexão SQLAlchemy e fallback SQLite local
 	models/                 tabelas User, Project e Source
+	models/question.py      histórico persistente de perguntas e respostas
 	schemas/                modelos de entrada da API
 	routes/auth.py          login e validação do JWT
 	routes/users.py         criação e consulta do usuário autenticado
@@ -181,6 +184,7 @@ Durante o desenvolvimento, mantenha `http://localhost:8000` no `config.js`.
 | `POST` | `/sources/{project_id}/upload` | envia uma fonte |
 | `POST` | `/sources/{source_id}/analyze` | executa análise explícita |
 | `POST` | `/sources/{source_id}/ask` | responde uma pergunta sobre a fonte |
+| `GET` | `/projects/{project_id}/history` | carrega o histórico do projeto |
 
 ## Diagnóstico rápido
 

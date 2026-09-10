@@ -1055,6 +1055,28 @@ a {
     margin-top: 16px;
 }
 
+.confirm-modal {
+    max-width: 420px;
+    text-align: center;
+}
+
+.confirm-modal .modal-actions {
+    justify-content: center;
+}
+
+.warning-icon {
+    background: #fff4df;
+    color: #c47a16;
+}
+
+.danger-btn {
+    background: #d94b62;
+}
+
+.danger-btn:hover {
+    background: #b9364d;
+}
+
 .source-info strong {
     display: block;
 

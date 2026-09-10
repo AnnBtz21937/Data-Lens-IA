@@ -6,6 +6,7 @@ from app.database import Base, engine
 from app.models.user import User
 from app.models.project import Project
 from app.models.source import Source
+from app.models.question import Question
 from app.routes.users import router as users_router
 from app.routes.projects import router as projects_router
 from app.routes.auth import router as auth_router

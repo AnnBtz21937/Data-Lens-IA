@@ -56,6 +56,10 @@ const databaseFields = document.getElementById("databaseFields");
 const databaseName = document.getElementById("databaseName");
 const connectionUrl = document.getElementById("connectionUrl");
 const databaseQuery = document.getElementById("databaseQuery");
+const confirmModal = document.getElementById("confirmModal");
+const confirmMessage = document.getElementById("confirmMessage");
+const acceptConfirm = document.getElementById("acceptConfirm");
+const cancelConfirm = document.getElementById("cancelConfirm");
 
 const API_URL = window.BDIA_API_URL || "http://localhost:8000";
 let accessToken = localStorage.getItem("datalens_token");
@@ -105,6 +109,7 @@ async function loadOrCreateProject() {
     await loadProjects();
     await loadCurrentUser();
     await loadSources();
+    await loadHistory();
 }
 
 async function loadProjects() {
@@ -132,6 +137,17 @@ async function loadSources() {
         addSourceToInterface({ name: source.name, size: 0 }, source);
     });
     latestSource = currentSources[currentSources.length - 1] || null;
+}
+
+async function loadHistory() {
+    const history = await apiRequest(`/projects/${currentProject.id}/history`);
+    questionCount.textContent = history.length;
+    chatMessages.innerHTML = "";
+    history.forEach(item => {
+        addUserMessage(item.question);
+        addAIMessage(formatAssistantMessage(item.answer));
+    });
+    scrollChat();
 }
 
 function clearSources() {
@@ -179,7 +195,10 @@ async function selectProject(projectId) {
 
 async function deleteProject(projectId) {
     const project = projects.find(item => item.id === projectId);
-    if (!project || !confirm(`Excluir o projeto "${project.name}"?`)) return;
+    if (!project || !(await askConfirmation(
+        "Excluir projeto",
+        `O projeto "${project.name}" e seu histórico serão excluídos permanentemente.`
+    ))) return;
 
     try {
         await apiRequest(`/projects/${projectId}`, { method: "DELETE" });
@@ -194,6 +213,25 @@ async function deleteProject(projectId) {
     } catch (error) {
         alert(error.message);
     }
+}
+
+function askConfirmation(title, message) {
+    return new Promise(resolve => {
+        document.getElementById("confirmTitle").textContent = title;
+        confirmMessage.textContent = message;
+        confirmModal.classList.remove("hidden");
+
+        const finish = value => {
+            confirmModal.classList.add("hidden");
+            acceptConfirm.removeEventListener("click", accept);
+            cancelConfirm.removeEventListener("click", cancel);
+            resolve(value);
+        };
+        const accept = () => finish(true);
+        const cancel = () => finish(false);
+        acceptConfirm.addEventListener("click", accept);
+        cancelConfirm.addEventListener("click", cancel);
+    });
 }
 
 
@@ -663,7 +701,10 @@ function addSourceToInterface(file, sourceData = null) {
 }
 
 async function deleteSource(sourceId, sourceCard) {
-    if (!sourceId || !confirm("Excluir esta fonte?")) return;
+    if (!sourceId || !(await askConfirmation(
+        "Excluir fonte",
+        "A fonte e as perguntas vinculadas a ela serão excluídas."
+    ))) return;
 
     try {
         await apiRequest(`/sources/${sourceId}`, { method: "DELETE" });
