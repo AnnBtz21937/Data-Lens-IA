@@ -1,0 +1,1085 @@
+/* =====================================
+   ELEMENTOS
+===================================== */
+
+const loginScreen = document.getElementById("loginScreen");
+const app = document.getElementById("app");
+
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+const registerExtras = document.querySelectorAll(
+    ".divider, .google-btn, .register-text"
+);
+
+const togglePassword =
+    document.getElementById("togglePassword");
+
+const passwordInput =
+    document.getElementById("password");
+
+const uploadModal =
+    document.getElementById("uploadModal");
+
+const addSourceBtn =
+    document.getElementById("addSourceBtn");
+
+const addSourceBtn2 =
+    document.getElementById("addSourceBtn2");
+
+const emptyUploadBtn =
+    document.getElementById("emptyUploadBtn");
+
+const closeModal =
+    document.getElementById("closeModal");
+
+const cancelUpload =
+    document.getElementById("cancelUpload");
+
+const fileInput = document.getElementById("fileInput");
+const dropZone = document.getElementById("dropZone");
+const selectedFiles = document.getElementById("selectedFiles");
+const sourcesList = document.getElementById("sourcesList");
+const sourceCount = document.getElementById("sourceCount");
+const chatInput = document.getElementById("chatInput");
+const sendMessage = document.getElementById("sendMessage");
+const chatMessages = document.getElementById("chatMessages");
+const questionCount = document.getElementById("questionCount");
+const analysisProgress = document.getElementById("analysisProgress");
+const openSidebar = document.getElementById("openSidebar");
+const closeSidebar = document.getElementById("closeSidebar");
+const sidebar = document.getElementById("sidebar");
+const newProjectBtn = document.getElementById("newProjectBtn");
+
+const API_URL = window.BDIA_API_URL || "http://localhost:8000";
+let accessToken = localStorage.getItem("datalens_token");
+let currentProject = null;
+let latestSource = null;
+let currentSources = [];
+
+async function apiRequest(path, options = {}) {
+    const headers = new Headers(options.headers || {});
+
+    if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
+    const response = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers
+    });
+
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(body.detail || "Não foi possível concluir a operação.");
+    }
+
+    return body;
+}
+
+async function loadOrCreateProject() {
+    const projects = await apiRequest("/projects/");
+
+    if (projects.length > 0) {
+        currentProject = projects[0];
+    } else {
+        currentProject = await apiRequest("/projects/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: "Meu projeto",
+                description: "Projeto criado pelo BDIA"
+            })
+        });
+    }
+
+    clearSources();
+    updateProjectInterface(currentProject);
+    await loadCurrentUser();
+    await loadSources();
+}
+
+async function loadCurrentUser() {
+    const user = await apiRequest("/users/me");
+    const initials = user.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(name => name[0].toUpperCase())
+        .join("");
+
+    document.getElementById("userName").textContent = user.name;
+    document.getElementById("userInitials").textContent = initials || "US";
+    document.getElementById("topbarInitials").textContent = initials || "US";
+}
+
+async function loadSources() {
+    currentSources = await apiRequest(`/sources/project/${currentProject.id}`);
+    currentSources.forEach(source => {
+        addSourceToInterface({ name: source.name, size: 0 }, source);
+    });
+    latestSource = currentSources[currentSources.length - 1] || null;
+}
+
+function clearSources() {
+    sourcesList.querySelectorAll(".source-card").forEach(card => card.remove());
+    sourceCount.textContent = "0";
+    analysisProgress.textContent = "0%";
+}
+
+function updateProjectInterface(project) {
+    document.querySelector(".workspace-header h1").textContent = project.name;
+    document.querySelector(".breadcrumb strong").textContent = project.name;
+
+    const projectList = document.getElementById("projectList");
+    projectList.innerHTML = `
+        <div class="project-item active-project">
+            <span class="project-dot"></span>
+            <span>${escapeHTML(project.name)}</span>
+        </div>
+    `;
+}
+
+
+/* =====================================
+   LOGIN
+===================================== */
+
+loginForm.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const email =
+        document.getElementById("email").value;
+
+    const password =
+        document.getElementById("password").value;
+
+    if (!email || !password) {
+        alert("Preencha todos os campos.");
+        return;
+    }
+
+    try {
+        const formData = new URLSearchParams();
+        formData.set("username", email);
+        formData.set("password", password);
+
+        const login = await apiRequest("/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: formData
+        });
+
+        accessToken = login.access_token;
+        localStorage.setItem("datalens_token", accessToken);
+        await loadOrCreateProject();
+
+        loginScreen.classList.add("hidden");
+        app.classList.remove("hidden");
+    } catch (error) {
+        alert(error.message);
+    }
+
+});
+
+document
+    .getElementById("showRegister")
+    .addEventListener("click", function() {
+        loginForm.classList.add("hidden");
+        registerForm.classList.remove("hidden");
+        registerExtras.forEach(element => element.classList.add("hidden"));
+    });
+
+registerForm.addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const name = document.getElementById("registerName").value.trim();
+    const email = document.getElementById("registerEmail").value.trim();
+    const password = document.getElementById("registerPassword").value;
+
+        try {
+            await apiRequest("/users/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            document.getElementById("email").value = email;
+            document.getElementById("password").value = password;
+            registerForm.reset();
+            registerForm.classList.add("hidden");
+            loginForm.classList.remove("hidden");
+            registerExtras.forEach(element => element.classList.remove("hidden"));
+            alert("Conta criada com sucesso. Agora clique em Entrar.");
+        } catch (error) {
+            alert(error.message);
+        }
+});
+
+document
+    .getElementById("backToLogin")
+    .addEventListener("click", function() {
+        registerForm.classList.add("hidden");
+        loginForm.classList.remove("hidden");
+        registerExtras.forEach(element => element.classList.remove("hidden"));
+    });
+
+
+/* =====================================
+   MOSTRAR / ESCONDER SENHA
+===================================== */
+
+togglePassword.addEventListener("click", function() {
+
+    if (passwordInput.type === "password") {
+
+        passwordInput.type = "text";
+
+        togglePassword.innerHTML =
+            '<i class="fa-regular fa-eye-slash"></i>';
+
+    } else {
+
+        passwordInput.type = "password";
+
+        togglePassword.innerHTML =
+            '<i class="fa-regular fa-eye"></i>';
+
+    }
+
+});
+
+
+/* =====================================
+   MODAL
+===================================== */
+
+function openUploadModal() {
+
+    uploadModal.classList.remove("hidden");
+
+}
+
+function closeUploadModal() {
+
+    uploadModal.classList.add("hidden");
+
+    selectedFiles.innerHTML = "";
+
+    fileInput.value = "";
+
+}
+
+
+addSourceBtn.addEventListener(
+    "click",
+    openUploadModal
+);
+
+addSourceBtn2.addEventListener(
+    "click",
+    openUploadModal
+);
+
+emptyUploadBtn.addEventListener(
+    "click",
+    openUploadModal
+);
+
+closeModal.addEventListener(
+    "click",
+    closeUploadModal
+);
+
+cancelUpload.addEventListener(
+    "click",
+    closeUploadModal
+);
+
+
+/* FECHAR CLICANDO FORA */
+
+uploadModal.addEventListener(
+    "click",
+    function(event) {
+
+        if (event.target === uploadModal) {
+            closeUploadModal();
+        }
+
+    }
+);
+
+
+/* =====================================
+   SELEÇÃO DE ARQUIVOS
+===================================== */
+
+fileInput.addEventListener(
+    "change",
+    function() {
+
+        showSelectedFiles(
+            Array.from(fileInput.files)
+        );
+
+    }
+);
+
+
+function showSelectedFiles(files) {
+
+    selectedFiles.innerHTML = "";
+
+    files.forEach(file => {
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "selected-file";
+
+        div.innerHTML = `
+            <i class="fa-solid fa-file"></i>
+
+            <span>${file.name}</span>
+        `;
+
+        selectedFiles.appendChild(div);
+
+    });
+
+}
+
+
+/* =====================================
+   DRAG AND DROP
+===================================== */
+
+dropZone.addEventListener(
+    "dragover",
+    function(event) {
+
+        event.preventDefault();
+
+        dropZone.classList.add("dragover");
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragleave",
+    function() {
+
+        dropZone.classList.remove("dragover");
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "drop",
+    function(event) {
+
+        event.preventDefault();
+
+        dropZone.classList.remove("dragover");
+
+        const files =
+            Array.from(event.dataTransfer.files);
+
+        try {
+            const dataTransfer = new DataTransfer();
+            files.forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+        } catch (error) {
+            fileInput.value = "";
+        }
+
+        showSelectedFiles(files);
+
+    }
+);
+
+
+/* =====================================
+   ADICIONAR ARQUIVO
+===================================== */
+
+document
+    .getElementById("confirmUpload")
+    .addEventListener(
+        "click",
+        async function() {
+
+            const files =
+                Array.from(fileInput.files);
+
+            if (files.length === 0) {
+
+                alert(
+                    "Selecione pelo menos um arquivo."
+                );
+
+                return;
+
+            }
+
+
+            if (!currentProject) {
+                alert("Crie ou selecione um projeto antes de enviar uma fonte.");
+                return;
+            }
+
+            try {
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    const source = await apiRequest(
+                        `/sources/${currentProject.id}/upload`,
+                        { method: "POST", body: formData }
+                    );
+
+                    addSourceToInterface(file, source);
+                    currentSources.push(source);
+                    latestSource = source;
+                }
+
+                closeUploadModal();
+            } catch (error) {
+                alert(error.message);
+            }
+
+        }
+    );
+
+
+function addSourceToInterface(file, sourceData = null) {
+
+    const extension =
+        file.name
+            .split(".")
+            .pop()
+            .toLowerCase();
+
+
+    let icon =
+        "fa-file";
+
+    let typeClass =
+        "";
+    const sizeLabel = file.size
+        ? ` • ${formatFileSize(file.size)}`
+        : "";
+
+
+    if (extension === "pdf") {
+
+        icon = "fa-file-pdf";
+        typeClass = "pdf";
+
+    }
+
+    else if (
+        extension === "xlsx" ||
+        extension === "xls" ||
+        extension === "csv"
+    ) {
+
+        icon = "fa-file-excel";
+        typeClass = "excel";
+
+    }
+
+    else if (
+        extension === "doc" ||
+        extension === "docx"
+    ) {
+
+        icon = "fa-file-word";
+        typeClass = "doc";
+
+    }
+
+
+    const sourceCard =
+        document.createElement("div");
+
+    sourceCard.dataset.sourceId = sourceData?.id || "";
+    sourceCard.className =
+        "source-card";
+
+
+    sourceCard.innerHTML = `
+
+        <div class="source-icon ${typeClass}">
+
+            <i class="fa-solid ${icon}"></i>
+
+        </div>
+
+
+        <div class="source-info">
+
+            <strong>
+                ${file.name}
+            </strong>
+
+            <span>
+                ${extension.toUpperCase()}${sizeLabel}
+            </span>
+
+        </div>
+
+
+        <button class="source-menu">
+
+            <i class="fa-solid fa-ellipsis"></i>
+
+        </button>
+
+    `;
+
+
+    /*
+        Inserimos antes da área
+        "Adicionar nova fonte"
+    */
+
+    const empty =
+        document.getElementById("emptySource");
+
+    sourcesList.insertBefore(
+        sourceCard,
+        empty
+    );
+
+
+    updateSourceCount();
+
+}
+
+
+/* =====================================
+   TAMANHO DO ARQUIVO
+===================================== */
+
+function formatFileSize(bytes) {
+
+    if (bytes === 0)
+        return "0 Bytes";
+
+
+    const sizes = [
+        "Bytes",
+        "KB",
+        "MB",
+        "GB"
+    ];
+
+
+    const i =
+        Math.floor(
+            Math.log(bytes) /
+            Math.log(1024)
+        );
+
+
+    return (
+        Math.round(
+            bytes /
+            Math.pow(1024, i) *
+            100
+        ) / 100
+    ) + " " + sizes[i];
+
+}
+
+
+/* =====================================
+   CONTADOR DE FONTES
+===================================== */
+
+function updateSourceCount() {
+
+    const cards =
+        sourcesList.querySelectorAll(
+            ".source-card"
+        );
+
+    sourceCount.textContent =
+        cards.length;
+
+}
+
+
+/* =====================================
+   CHAT
+===================================== */
+
+sendMessage.addEventListener(
+    "click",
+    sendUserMessage
+);
+
+
+chatInput.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (
+            event.key === "Enter" &&
+            !event.shiftKey
+        ) {
+
+            event.preventDefault();
+
+            sendUserMessage();
+
+        }
+
+    }
+);
+
+
+async function sendUserMessage() {
+
+    const message =
+        chatInput.value.trim();
+
+
+    if (!message)
+        return;
+
+
+    addUserMessage(message);
+
+
+    chatInput.value = "";
+
+
+    showTyping();
+
+    try {
+        if (!latestSource) {
+            throw new Error("Envie uma fonte antes de fazer perguntas.");
+        }
+
+        const result = await apiRequest(
+            `/sources/${latestSource.id}/ask`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: message })
+            }
+        );
+
+        incrementQuestionCount();
+        analysisProgress.textContent = "100%";
+        removeTyping();
+        addAIMessage(formatAssistantMessage(result.answer));
+    } catch (error) {
+        removeTyping();
+        addAIMessage(escapeHTML(error.message));
+    }
+
+}
+
+/* =====================================
+   MENSAGEM DO USUÁRIO
+===================================== */
+
+function addUserMessage(message) {
+
+    const div =
+        document.createElement("div");
+
+    div.className =
+        "message user-message";
+
+
+    div.innerHTML = `
+
+        <div class="message-avatar">
+            US
+        </div>
+
+        <div class="message-content">
+
+            <div class="message-author">
+                Você
+            </div>
+
+            <p>
+                ${escapeHTML(message)}
+            </p>
+
+            <span class="message-time">
+                Agora
+            </span>
+
+        </div>
+
+    `;
+
+
+    chatMessages.appendChild(div);
+
+
+    scrollChat();
+
+}
+
+function formatAssistantMessage(message) {
+    return escapeHTML(message).replace(/\n/g, "<br>");
+}
+
+
+/* =====================================
+   RESPOSTA DA IA
+===================================== */
+
+function generateAIResponse(question) {
+
+    let response = "";
+
+
+    const lower =
+        question.toLowerCase();
+
+
+    if (
+        lower.includes("resumo") ||
+        lower.includes("resuma")
+    ) {
+
+        response = `
+            Com base nas fontes adicionadas ao projeto,
+            os documentos apresentam informações relacionadas
+            aos principais conceitos de Inteligência Artificial,
+            suas aplicações e fundamentos.
+            <br><br>
+            <strong>Observação:</strong>
+            esta resposta está simulada no front-end.
+            No sistema final, a IA utilizará o conteúdo real
+            dos arquivos processados pelo backend.
+        `;
+
+    }
+
+    else if (
+        lower.includes("assunto") ||
+        lower.includes("tema")
+    ) {
+
+        response = `
+            O principal assunto identificado nas fontes está
+            relacionado à área de Inteligência Artificial e
+            aos conceitos utilizados para desenvolvimento
+            de sistemas inteligentes.
+            <br><br>
+            No backend, essa análise será realizada utilizando
+            os documentos enviados pelo usuário como contexto.
+        `;
+
+    }
+
+    else if (
+        lower.includes("conceito") ||
+        lower.includes("importante")
+    ) {
+
+        response = `
+            Alguns conceitos importantes identificados são:
+            <br><br>
+
+            • Inteligência Artificial<br>
+            • Aprendizado de Máquina<br>
+            • Processamento de dados<br>
+            • Sistemas inteligentes<br>
+            • Análise de informações
+            <br><br>
+
+            Esses resultados serão substituídos posteriormente
+            pela análise real realizada pela IA.
+        `;
+
+    }
+
+    else {
+
+        response = `
+            Entendi sua pergunta.
+            <br><br>
+
+            No momento, esta é uma resposta simulada
+            para demonstrar o funcionamento da interface.
+            Quando o backend estiver integrado,
+            a IA poderá analisar o conteúdo dos documentos
+            adicionados ao projeto e responder sua pergunta
+            com base nessas informações.
+        `;
+
+    }
+
+
+    addAIMessage(response);
+
+}
+
+
+/* =====================================
+   MENSAGEM DA IA
+===================================== */
+
+function addAIMessage(message) {
+
+    const div =
+        document.createElement("div");
+
+    div.className =
+        "message ai-message";
+
+
+    div.innerHTML = `
+
+        <div class="message-avatar">
+
+            <i class="fa-solid fa-sparkles"></i>
+
+        </div>
+
+
+        <div class="message-content">
+
+            <div class="message-author">
+                BDIA
+            </div>
+
+            <p>
+                ${message}
+            </p>
+
+            <span class="message-time">
+                Agora
+            </span>
+
+        </div>
+
+    `;
+
+
+    chatMessages.appendChild(div);
+
+
+    scrollChat();
+
+}
+
+
+/* =====================================
+   LOADING DA IA
+===================================== */
+
+function showTyping() {
+
+    const typing =
+        document.createElement("div");
+
+    typing.id =
+        "typingMessage";
+
+    typing.className =
+        "message ai-message";
+
+
+    typing.innerHTML = `
+
+        <div class="message-avatar">
+
+            <i class="fa-solid fa-sparkles"></i>
+
+        </div>
+
+
+        <div class="message-content">
+
+            <div class="message-author">
+                BDIA
+            </div>
+
+            <p>
+                Analisando suas fontes...
+            </p>
+
+        </div>
+
+    `;
+
+
+    chatMessages.appendChild(typing);
+
+    scrollChat();
+
+}
+
+
+function removeTyping() {
+
+    const typing =
+        document.getElementById(
+            "typingMessage"
+        );
+
+
+    if (typing)
+        typing.remove();
+
+}
+
+
+/* =====================================
+   CONTADOR DE PERGUNTAS
+===================================== */
+
+function incrementQuestionCount() {
+
+    const current =
+        parseInt(
+            questionCount.textContent
+        );
+
+
+    questionCount.textContent =
+        current + 1;
+
+}
+
+
+/* =====================================
+   SCROLL CHAT
+===================================== */
+
+function scrollChat() {
+
+    chatMessages.scrollTop =
+        chatMessages.scrollHeight;
+
+}
+
+
+/* =====================================
+   EVITAR HTML INJETADO
+===================================== */
+
+function escapeHTML(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        text;
+
+    return div.innerHTML;
+
+}
+
+
+/* =====================================
+   SIDEBAR MOBILE
+===================================== */
+
+openSidebar.addEventListener(
+    "click",
+    function() {
+
+        sidebar.classList.add("open");
+
+    }
+);
+
+
+closeSidebar.addEventListener(
+    "click",
+    function() {
+
+        sidebar.classList.remove("open");
+
+    }
+);
+
+
+/* =====================================
+   NOVO PROJETO
+===================================== */
+
+newProjectBtn.addEventListener(
+    "click",
+    async function() {
+
+        const projectName =
+            prompt(
+                "Digite o nome do novo projeto:"
+            );
+
+
+        if (!projectName)
+            return;
+
+
+        try {
+            currentProject = await apiRequest("/projects/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: projectName })
+            });
+
+            latestSource = null;
+            clearSources();
+            updateProjectInterface(currentProject);
+        } catch (error) {
+            alert(error.message);
+        }
+
+    }
+);
+
+
+/* =====================================
+   SUGESTÕES DE PERGUNTAS
+===================================== */
+
+document
+    .querySelectorAll(".suggestion-btn")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            function() {
+
+                chatInput.value =
+                    this.textContent.trim();
+
+                chatInput.focus();
+
+            }
+        );
+
+    });
+
+
+/* =====================================
+   UPLOAD PELO CHAT
+===================================== */
+
+document
+    .getElementById("chatAttach")
+    .addEventListener(
+        "click",
+        openUploadModal
+    );
