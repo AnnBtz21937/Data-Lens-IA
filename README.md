@@ -1,6 +1,6 @@
 # BDIA
 
-Sistema web para enviar documentos, analisar dados e fazer perguntas sobre o conteúdo das fontes.
+Sistema web para envio de documentos, análise de dados e perguntas sobre o conteúdo das fontes. Atividade solicitada na disciplina de Sistemas Inteligentes, do professor Edilson Lima, da Universidade CEUMA, no curso de Engenharia de Computação.
 
 ## Comece aqui
 
