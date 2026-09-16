@@ -19,6 +19,10 @@ from app.services.documents import (
 router = APIRouter(prefix="/sources", tags=["Sources"])
 
 
+def _is_database_source(source: Source) -> bool:
+    return bool(source.path and source.path.startswith("database:"))
+
+
 def _database_rows(source_type: str, connection_url: str, query: str):
     if source_type == "mysql":
         from sqlalchemy import create_engine, text
@@ -39,9 +43,28 @@ def _database_rows(source_type: str, connection_url: str, query: str):
         client = MongoClient(connection_url, serverSelectionTimeoutMS=5000)
         try:
             database = client[database_name]
-            collection_name, _, filter_json = query.partition("?")
-            collection = database[collection_name.strip()]
-            filters = json.loads(filter_json) if filter_json else {}
+            collection_name, separator, filter_json = query.partition("?")
+            collection_name = collection_name.strip()
+            if not collection_name:
+                raise ValueError(
+                    "A consulta do MongoDB precisa informar a coleção."
+                )
+
+            filters = {}
+            if separator:
+                try:
+                    filters = json.loads(filter_json)
+                except json.JSONDecodeError as error:
+                    raise ValueError(
+                        "O filtro do MongoDB precisa ser um JSON válido."
+                    ) from error
+
+                if not isinstance(filters, dict):
+                    raise ValueError(
+                        "O filtro do MongoDB precisa ser um objeto JSON."
+                    )
+
+            collection = database[collection_name]
             return [
                 {key: str(value) if key == "_id" else value for key, value in row.items()}
                 for row in collection.find(filters).limit(1000)
@@ -208,7 +231,9 @@ def ask_source(
     if not question_text:
         raise HTTPException(status_code=400, detail="Digite uma pergunta.")
 
-    if not source.path or not os.path.exists(source.path):
+    if not source.path or (
+        not _is_database_source(source) and not os.path.exists(source.path)
+    ):
         raise HTTPException(status_code=404, detail="Arquivo da fonte não encontrado.")
 
     try:
@@ -253,7 +278,7 @@ def analyze_source(
             detail="A fonte não possui um arquivo associado."
         )
 
-    if not os.path.exists(source.path):
+    if not _is_database_source(source) and not os.path.exists(source.path):
         raise HTTPException(
             status_code=404,
             detail="Arquivo da fonte não encontrado."
@@ -271,5 +296,5 @@ def analyze_source(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao analisar o arquivo: {str(e)}"
+            detail=f"Erro ao analisar a fonte: {str(e)}"
         )
