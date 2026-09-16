@@ -2,6 +2,8 @@ import os
 
 import pandas as pd
 
+import time
+
 
 # Dicionários específicos do Censo Escolar
 DICIONARIOS = {
@@ -1547,56 +1549,124 @@ def analisar_csv(file_path: str):
     também executa análises específicas desse conjunto de dados.
     """
 
+    inicio_total = time.time()
+
+    inicio = time.time()
     df = ler_csv(file_path)
+    print(
+        "TEMPO ler_csv:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
 
     # ---------------------------------------------------------
-    # # DESCOBERTA AUTOMÁTICA DE RELAÇÕES
-    # # ---------------------------------------------------------
-    
-    relacoes_automaticas = descobrir_relacoes_categoricas(df)
+    # DESCOBERTA AUTOMÁTICA DE RELAÇÕES
+    # ---------------------------------------------------------
 
+    inicio = time.time()
+    relacoes_automaticas = descobrir_relacoes_categoricas(df)
+    print(
+        "TEMPO descobrir_relacoes_categoricas:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
+
+    inicio = time.time()
     relacoes_relevantes = selecionar_relacoes_relevantes(
         relacoes_automaticas
     )
+    print(
+        "TEMPO selecionar_relacoes_relevantes:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
 
+    inicio = time.time()
     insights_relacoes_automaticas = (
         gerar_insights_relacoes_automaticas(
             relacoes_relevantes
         )
     )
+    print(
+        "TEMPO gerar_insights_relacoes:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
 
     # ---------------------------------------------------------
-    # # ESTRUTURAÇÃO SEMÂNTICA
+    # ESTRUTURAÇÃO SEMÂNTICA
     # ---------------------------------------------------------
-    
+
+    inicio = time.time()
     relacoes_estruturadas = estruturar_relacoes(
         relacoes_relevantes
     )
+    print(
+        "TEMPO estruturar_relacoes:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
 
+    inicio = time.time()
     insights_comparativos = gerar_insights_comparativos(
         relacoes_estruturadas
     )
+    print(
+        "TEMPO gerar_insights_comparativos:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
 
+    inicio = time.time()
     comparacoes_genericas = gerar_comparacoes_genericas(
         relacoes_estruturadas
+    )
+    print(
+        "TEMPO gerar_comparacoes_genericas:",
+        round(time.time() - inicio, 2),
+        "segundos"
     )
 
     # ---------------------------------------------------------
     # RESULTADO PRINCIPAL
     # ---------------------------------------------------------
 
+    inicio = time.time()
+    analise_colunas = analisar_colunas(df)
+    print(
+        "TEMPO analisar_colunas:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
+
+    inicio = time.time()
+    insights_gerais = gerar_insights(df)
+    print(
+        "TEMPO gerar_insights:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
+
+    inicio = time.time()
+    insights_qualidade = gerar_insights_qualidade(df)
+    print(
+        "TEMPO gerar_insights_qualidade:",
+        round(time.time() - inicio, 2),
+        "segundos"
+    )
+
     resultado = {
         "total_registros": int(len(df)),
         "total_colunas": int(len(df.columns)),
         "colunas": list(df.columns),
 
-        "analise_colunas": analisar_colunas(df),
+        "analise_colunas": analise_colunas,
 
         "insights": {
-            "gerais": gerar_insights(df),
+            "gerais": insights_gerais,
             "relacoes": insights_relacoes_automaticas,
             "comparativos": insights_comparativos,
-            "qualidade_dados": gerar_insights_qualidade(df)
+            "qualidade_dados": insights_qualidade
         },
 
         "analise_especifica": {}
@@ -1614,12 +1684,34 @@ def analisar_csv(file_path: str):
 
     if colunas_encontradas:
 
+        inicio = time.time()
         relacoes_censo = analisar_relacoes_censo(df)
+        print(
+            "TEMPO analisar_relacoes_censo:",
+            round(time.time() - inicio, 2),
+            "segundos"
+        )
+
+        inicio = time.time()
+        categorias_censo = analisar_categorias_censo(df)
+        print(
+            "TEMPO analisar_categorias_censo:",
+            round(time.time() - inicio, 2),
+            "segundos"
+        )
+
+        inicio = time.time()
+        gestores_censo = analisar_gestores_censo(df)
+        print(
+            "TEMPO analisar_gestores_censo:",
+            round(time.time() - inicio, 2),
+            "segundos"
+        )
 
         resultado["analise_especifica"] = {
             "tipo": "Censo Escolar",
-            "categorias": analisar_categorias_censo(df),
-            "gestores": analisar_gestores_censo(df),
+            "categorias": categorias_censo,
+            "gestores": gestores_censo,
             "relacoes": relacoes_censo
         }
 
@@ -1633,5 +1725,11 @@ def analisar_csv(file_path: str):
         "relacoes_estruturadas": relacoes_estruturadas,
         "comparacoes": comparacoes_genericas
     }
+
+    print(
+        "TEMPO TOTAL analisar_csv:",
+        round(time.time() - inicio_total, 2),
+        "segundos"
+    )
 
     return resultado

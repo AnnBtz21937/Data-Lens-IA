@@ -11,6 +11,7 @@ from app.routes.users import router as users_router
 from app.routes.projects import router as projects_router
 from app.routes.auth import router as auth_router
 from app.routes.source import router as sources_router
+from app.routes.mysql import router as mysql_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -34,6 +35,7 @@ app.include_router(users_router)
 app.include_router(projects_router)
 app.include_router(auth_router)
 app.include_router(sources_router)
+app.include_router(mysql_router)
 
 @app.get("/")
 def root():

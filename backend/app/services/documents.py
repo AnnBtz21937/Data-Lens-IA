@@ -3,8 +3,12 @@ import unicodedata
 import json
 from pathlib import Path
 
-from app.services.analysis import analisar_colunas, analisar_csv
-
+from app.services.analysis import analisar_colunas, analisar_csv, ler_csv
+from app.services.ai import (
+    preparar_contexto_ia,
+    criar_prompt_analise,
+    consultar_ia
+)
 
 TABLE_EXTENSIONS = {".csv", ".xls", ".xlsx"}
 TEXT_EXTENSIONS = {".pdf", ".docx", ".txt"}
@@ -47,6 +51,14 @@ def _read_docx(file_path: str) -> str:
     ]
     return "\n".join(paragraphs + tables).strip()
 
+def _ler_dimensao_tabela(file_path: str) -> dict:
+    df = ler_csv(file_path)
+
+    return {
+        "total_registros": int(len(df)),
+        "total_colunas": int(len(df.columns)),
+        "colunas": list(df.columns)
+    }
 
 def read_document(file_path: str) -> dict:
     if file_path.startswith("database:"):
@@ -138,12 +150,14 @@ def _table_answer(question: str, analysis: dict) -> str:
             )
         return "\n\n".join(answer)
 
-    if any(term in lower_question for term in ("coluna", "campo", "variavel")):
-        return "\n\n".join([
-            "Estrutura do arquivo",
-            f"O arquivo possui {total_columns} colunas e {total_records} registros.",
-            "Colunas: " + ", ".join(str(column) for column in columns) + "."
-        ])
+    if (
+        any(term in lower_question for term in ("registro", "registros", "linha", "linhas"))
+        and any(term in lower_question for term in ("coluna", "colunas", "campo", "campos", "variavel", "variaveis"))
+    ):
+        return (
+            f"O arquivo possui {total_records} registros "
+            f"e {total_columns} colunas."
+        )
 
     if any(term in lower_question for term in ("linha", "registro", "quantidade", "total")):
         return "\n\n".join([
@@ -224,6 +238,48 @@ def _normalize(value: str) -> str:
     )
     return re.sub(r"[^\w\s]", " ", without_accents.lower())
 
+def _selecionar_trechos_relevantes(question: str, text: str) -> list[str]:
+    keywords = {
+        word
+        for word in _normalize(question).split()
+        if len(word) >= 4
+        and word not in {
+            "qual", "quais", "como", "onde", "quando",
+            "sobre", "esse", "esta", "para",
+            "arquivo", "documento"
+        }
+    }
+
+    paragraphs = [
+        " ".join(paragraph.split())
+        for paragraph in re.split(
+            r"\n\s*\n|(?<=[.!?])\s+",
+            text
+        )
+        if paragraph.strip()
+    ]
+
+    ranked = sorted(
+        (
+            (
+                sum(
+                    keyword in _normalize(paragraph)
+                    for keyword in keywords
+                ),
+                index,
+                paragraph
+            )
+            for index, paragraph in enumerate(paragraphs)
+        ),
+        key=lambda item: (item[0], -item[1]),
+        reverse=True
+    )
+
+    return [
+        paragraph
+        for score, _, paragraph in ranked
+        if score > 0
+    ][:3]
 
 def _is_summary_question(normalized_question: str) -> bool:
     return any(
@@ -277,12 +333,122 @@ def _text_summary(text: str, units: list[str]) -> str:
 
 
 def answer_question(file_path: str, source_name: str, question: str) -> dict:
-    document = read_document(file_path)
+    normalized_question = _normalize(question)
 
-    if document["kind"] == "table":
-        answer = _table_answer(question, document["analysis"])
-    else:
-        answer = _text_answer(question, document["text"])
+    pergunta_dimensao = any(
+        termo in normalized_question
+        for termo in (
+            "registro",
+            "registros",
+            "linha",
+            "linhas",
+            "quantidade de registros",
+            "total de registros",
+            "quantas linhas"
+        )
+    )
+
+    pergunta_colunas = any(
+        termo in normalized_question
+        for termo in (
+            "coluna",
+            "colunas",
+            "campo",
+            "campos",
+            "variavel",
+            "variaveis"
+        )
+    )
+
+    extension = Path(file_path).suffix.lower()
+
+    try:
+        # Perguntas simples sobre quantidade de registros/colunas
+        # não precisam executar a análise completa do CSV.
+        if extension in TABLE_EXTENSIONS and (
+            pergunta_dimensao or pergunta_colunas
+        ):
+            analysis = _ler_dimensao_tabela(file_path)
+
+            answer = _table_answer(
+                question,
+                analysis
+            )
+
+            return {
+                "source_name": source_name,
+                "question": question,
+                "answer": answer,
+                "kind": "table",
+                "analysis": analysis
+            }
+
+        # Demais perguntas continuam usando o fluxo completo.
+        document = read_document(file_path)
+
+        if document["kind"] == "table":
+
+            contexto = preparar_contexto_ia(
+                document["analysis"],
+                question
+            )
+
+            prompt = criar_prompt_analise(
+                contexto,
+                question
+            )
+
+            resposta_ia = consultar_ia(prompt)
+            answer = resposta_ia
+
+        else:
+            trechos = _selecionar_trechos_relevantes(
+                question,
+                document["text"]
+            )
+
+            prompt = f"""
+Você é um assistente de análise de documentos.
+
+Responda sempre em português do Brasil.
+
+Responda diretamente à pergunta do usuário.
+
+Use somente as informações presentes nos trechos fornecidos.
+
+Não invente informações.
+
+Não mostre seu raciocínio.
+
+Se a informação não estiver nos trechos, diga que ela não foi localizada.
+
+PERGUNTA DO USUÁRIO:
+
+{question}
+
+TRECHOS RELEVANTES DO DOCUMENTO:
+
+{chr(10).join("- " + trecho for trecho in trechos)}
+
+Responda de forma clara e objetiva.
+"""
+
+            resposta_ia = consultar_ia(prompt)
+            answer = resposta_ia
+
+    except Exception:
+        document = read_document(file_path)
+
+        if document["kind"] == "table":
+            answer = _table_answer(
+                question,
+                document["analysis"]
+            )
+        else:
+            answer = _text_answer(
+                question,
+                document["text"]
+            )
 
     return {
         "source_name": source_name,
