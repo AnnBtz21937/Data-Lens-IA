@@ -12,3 +12,4 @@ xlrd
 pypdf
 python-docx
 pymongo
+requests

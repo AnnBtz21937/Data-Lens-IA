@@ -2,6 +2,33 @@
 
 Sistema web para enviar documentos, analisar dados e fazer perguntas sobre o conteúdo das fontes.
 
+## Comece aqui
+
+Para rodar na sua máquina, você precisa de Python 3.12 ou compatível. O modo local usa SQLite automaticamente, então não é necessário instalar MySQL para começar.
+
+```bash
+git clone https://github.com/AnnBtz21937/Data-Lens-IA.git
+cd Data-Lens-IA
+python -m venv .venv
+```
+
+Ative o ambiente virtual:
+
+```bash
+# Linux ou macOS
+source .venv/bin/activate
+
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+```
+
+Instale as dependências e siga para [Executar localmente](#executar-localmente):
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r backend/requirements.txt
+```
+
 ## Visão geral
 
 O projeto é dividido em duas partes:
@@ -41,7 +68,7 @@ backend/app/
 	routes/source.py        upload, fontes, análise e perguntas
 	services/analysis.py    estatísticas e relações para CSV/Excel
 	services/documents.py   leitura de PDF, DOCX, TXT, CSV e Excel
-	services/ai.py          preparação de contexto/prompt para futura IA generativa
+	services/ai.py          integração com Ollama e criação de prompts
 ```
 
 ## Formatos aceitos
@@ -58,6 +85,15 @@ Arquivos `.doc` antigos não são processados diretamente. Salve-os como `.docx`
 
 Fontes MySQL e MongoDB não enviam arquivos: o sistema executa uma consulta controlada no momento do cadastro, guarda o resultado consultado como fonte tabular e permite fazer perguntas sobre esse resultado.
 
+Para MongoDB, informe a URL com o banco e use uma coleção seguida, opcionalmente, por um filtro JSON:
+
+```text
+mongodb://localhost:27017/meu_banco
+clientes?{"status":"ativo"}
+```
+
+Sem filtro, use apenas o nome da coleção. O backend limita a consulta a 1.000 registros e converte o campo `_id` para texto.
+
 ## Como as respostas são produzidas
 
 O sistema atual é fundamentado no arquivo e não inventa dados:
@@ -68,14 +104,21 @@ O sistema atual é fundamentado no arquivo e não inventa dados:
 - Perguntas gerais usam os insights calculados pelo analisador, incluindo relações categóricas e qualidade dos dados.
 - Quando a informação não está disponível, a resposta informa isso e mostra um trecho de contexto, em vez de afirmar algo sem evidência.
 
-Este mecanismo é uma análise local determinística. O projeto ainda não chama OpenAI, Gemini ou outro modelo generativo. O arquivo `services/ai.py` prepara contexto e prompts para uma futura integração, mas não faz uma chamada externa atualmente.
+Para perguntas que precisam de uma resposta em linguagem natural, o backend chama o Ollama local em `http://localhost:11434` usando o modelo `llama3.2:1b`. A análise estrutural dos arquivos continua funcionando sem o modelo, mas o chat pode falhar ou usar o fallback local se o Ollama não estiver ativo.
+
+Instale o Ollama e baixe o modelo:
+
+```bash
+ollama pull llama3.2:1b
+ollama serve
+```
 
 ## Requisitos e instalação
 
-Use Python 3.12 ou compatível:
+Use Python 3.12 ou compatível. A forma recomendada é instalar tudo pelo arquivo de dependências:
 
-```powershell
-python -m pip install fastapi uvicorn sqlalchemy pymysql python-dotenv "pwdlib[argon2]" pyjwt python-multipart pandas openpyxl xlrd pypdf python-docx pymongo
+```bash
+python -m pip install -r backend/requirements.txt
 ```
 
 ## Banco de dados
@@ -92,31 +135,37 @@ DB_PASSWORD
 
 Quando elas não existem, a aplicação usa `datalens.db` em SQLite para facilitar o desenvolvimento local. Arquivos enviados ficam na pasta `uploads/`.
 
-## Executar
+## Executar localmente
 
-Terminal 1, API:
+Abra dois terminais na raiz do projeto. No Windows, use `py` no lugar de `python` se necessário.
 
-```powershell
+### Terminal 1: API
+
+```bash
 cd backend
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Se o terminal não estiver na raiz correta, use:
+Teste a API:
 
-```powershell
-python -m uvicorn app.main:app --app-dir "C:\caminho\para\Data-Lens-IA-main\backend" --port 8000
+```bash
+curl http://localhost:8000/health
 ```
 
-Terminal 2, frontend:
+Resposta esperada: `{"status":"ok"}`.
 
-```powershell
+### Terminal 2: frontend
+
+```bash
 cd front-end
-python -m http.server 5500
+python -m http.server 5500 --bind 0.0.0.0
 ```
 
 Abra `http://localhost:5500`.
 
 Documentação automática da API: `http://localhost:8000/docs`.
+
+O frontend usa `front-end/config.js` para localizar a API. Localmente, a API fica na porta `8000`; em previews do Codespaces, o host encaminhado é adaptado automaticamente.
 
 ## Deploy público
 
@@ -169,7 +218,7 @@ Durante o desenvolvimento, mantenha `http://localhost:8000` no `config.js`.
 
 - O SQLite e a pasta local `uploads/` são adequados apenas para testes. Em serviços gratuitos, arquivos locais podem ser apagados quando a aplicação reinicia.
 - Para uso real, use MySQL persistente e armazenamento de arquivos, como Cloudinary, S3 ou Cloudflare R2.
-- O backend atual não chama um modelo generativo externo; as respostas são calculadas localmente a partir do arquivo.
+- O backend chama o Ollama local para respostas em linguagem natural. Em produção, configure um provedor de IA acessível pelo backend ou mantenha respostas baseadas no fallback local.
 
 ## Rotas principais
 
