@@ -1,6 +1,7 @@
 # BDIA
 
 Sistema web para envio de documentos, análise de dados e perguntas sobre o conteúdo das fontes. Atividade solicitada na disciplina de Sistemas Inteligentes, do professor Edilson Lima, da Universidade CEUMA, no curso de Engenharia de Computação.
+O sistema não utiliza APIs externas de IA, como OpenAI ou Gemini. A interpretação em linguagem natural é realizada pelo modelo Llama 3.2 1B executado localmente por meio do Ollama. A API da aplicação foi desenvolvida pela dupla utilizando FastAPI.
 
 ## Comece aqui
 
